@@ -72,8 +72,8 @@ func (b *bus) dispatcher(evtName string, c chan interface{}) {
 
 func (b *bus) To(evtName string) chan interface{} {
 
-	//b.eventsMutex.Lock()
-	//defer b.eventsMutex.Unlock()
+	b.eventsMutex.Lock()
+	defer b.eventsMutex.Unlock()
 
 	var c chan interface{}
 	obj, ok := b.events.Get(evtName)
@@ -92,8 +92,8 @@ func (b *bus) To(evtName string) chan interface{} {
 func (b *bus) From(evtName string) chan interface{} {
 	c := make(chan interface{})
 
-	//b.listenerMutex.Lock()
-	//defer b.listenerMutex.Unlock()
+	b.listenerMutex.Lock()
+	defer b.listenerMutex.Unlock()
 
 	var listeners []chan interface{}
 	obj, ok := b.listener.Get(evtName)
