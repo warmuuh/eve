@@ -22,7 +22,7 @@ func (b *bus) Close() {
 	}
 
 	for _, v := range b.listener {
-		log.Println("Closing ", v)
+		//log.Println("Closing ", v)
 		for _, l := range v {
 			close(l)
 		}
@@ -45,7 +45,7 @@ func (b *bus) dispatcher(evtName string, c chan interface{}) {
 			//send unblocking:
 			select {
 			case l <- evt:
-				log.Println("Event dispatched")
+				//log.Println("Event dispatched")
 			default: //did not send message
 			}
 		}
@@ -71,7 +71,11 @@ func (b *bus) From(evtName string) chan interface{} {
 		b.listener[evtName] = make([]chan interface{}, 0) //srly 0?
 	}
 
-	log.Println("Registered listener to evt: ", evtName)
+	//log.Println("Registered listener to evt: ", evtName)
 	b.listener[evtName] = append(b.listener[evtName], c)
 	return c
+}
+
+func (b *bus) RegisteredListeners(evtName string) int {
+	return len(b.listener[evtName])
 }
