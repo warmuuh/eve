@@ -1,32 +1,44 @@
 package eve
 
 import (
+	cmap "github.com/streamrail/concurrent-map"
 	"log"
+	"sync"
 )
 
 type bus struct {
-	events   map[string]chan interface{}
-	listener map[string][]chan interface{}
+	events        cmap.ConcurrentMap //map[string]chan interface{}
+	eventsMutex   sync.Mutex
+	listener      cmap.ConcurrentMap //map[string][]chan interface{}
+	listenerMutex sync.Mutex
+	debug         bool
 }
 
 func Bus() bus {
 	return bus{
-		events:   make(map[string]chan interface{}),
-		listener: make(map[string][]chan interface{}),
+		events:   cmap.New(), //make(map[string]chan interface{}),
+		listener: cmap.New(), //make(map[string][]chan interface{}),
+		debug:    false,
+	}
+}
+
+func (b *bus) trace(v ...interface{}) {
+	if b.debug {
+		log.Println(v)
 	}
 }
 
 func (b *bus) Close() {
-	for _, v := range b.events {
-		close(v)
-	}
+	//for _, v := range b.events {
+	//	close(v)
+	//}
 
-	for _, v := range b.listener {
-		log.Println("Closing ", v)
-		for _, l := range v {
-			close(l)
-		}
-	}
+	//for _, v := range b.listener {
+	//	b.trace("Closing ", v)
+	//	for _, l := range v {
+	//		close(l)
+	//	}
+	//}
 
 }
 func (b *bus) dispatcher(evtName string, c chan interface{}) {
@@ -36,42 +48,71 @@ func (b *bus) dispatcher(evtName string, c chan interface{}) {
 			return
 		}
 		//dispatch:
-		if _, ok := b.listener[evtName]; !ok {
-			log.Println("no listener for event: " + evtName)
+		obj, ok := b.listener.Get(evtName)
+		if !ok {
+			b.trace("no listener for event: " + evtName)
 			continue //no listener registered
 		}
-		log.Println("dispatching evt: ", evtName)
-		for _, l := range b.listener[evtName] {
+		b.trace("dispatching evt: ", evtName)
+		listeners := obj.([]chan interface{})
+		log.Println("Registered listeners: ", len(listeners))
+		for _, l := range listeners {
 			//send unblocking:
 			select {
 			case l <- evt:
-				log.Println("Event dispatched")
+				b.trace("Event dispatched")
 			default: //did not send message
 			}
 		}
-		log.Println("clearing listeners for ", evtName)
+		b.trace("clearing listeners for ", evtName)
 		//TODO: do i need to close them or what?
-		b.listener[evtName] = make([]chan interface{}, 0) //srly 0?
+		b.listener.Set(evtName, make([]chan interface{}, 0)) //srly 0?
 	}
 }
 
 func (b *bus) To(evtName string) chan interface{} {
-	if _, ok := b.events[evtName]; !ok {
-		log.Println("Registered evt: ", evtName)
-		c := make(chan interface{})
-		b.events[evtName] = c
+
+	//b.eventsMutex.Lock()
+	//defer b.eventsMutex.Unlock()
+
+	var c chan interface{}
+	obj, ok := b.events.Get(evtName)
+	if ok {
+		c = obj.(chan interface{})
+	} else {
+		b.trace("Registered evt: ", evtName)
+		c = make(chan interface{})
+		b.events.Set(evtName, c)
 		go b.dispatcher(evtName, c)
 	}
-	return b.events[evtName]
+
+	return c
 }
 
 func (b *bus) From(evtName string) chan interface{} {
 	c := make(chan interface{})
-	if _, ok := b.listener[evtName]; !ok {
-		b.listener[evtName] = make([]chan interface{}, 0) //srly 0?
+
+	//b.listenerMutex.Lock()
+	//defer b.listenerMutex.Unlock()
+
+	var listeners []chan interface{}
+	obj, ok := b.listener.Get(evtName)
+	if ok {
+		listeners = obj.([]chan interface{})
+	} else {
+		listeners = make([]chan interface{}, 0) //srly 0?
 	}
 
-	log.Println("Registered listener to evt: ", evtName)
-	b.listener[evtName] = append(b.listener[evtName], c)
+	b.trace("Registered listener to evt: ", evtName)
+	b.listener.Set(evtName, append(listeners, c))
 	return c
+}
+
+func (b *bus) RegisteredListeners(evtName string) int {
+	obj, ok := b.listener.Get(evtName)
+	if !ok {
+		return 0
+	}
+	listeners := obj.([]chan interface{})
+	return len(listeners)
 }
