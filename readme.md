@@ -15,6 +15,9 @@ func main() {
 
 	b := eve.Bus()
 
+	//not blocking: 
+	b.To("start") <- "test"
+
 	go func() {
 		for {
 			evt := <-b.From("start")

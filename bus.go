@@ -21,7 +21,8 @@ func (b *bus) dispatcher(evtName string, c chan interface{}) {
 		evt := <-c
 		//dispatch:
 		if _, ok := b.listener[evtName]; !ok {
-			return //no listener registered
+			log.Println("no listener for event: " + evtName)
+			continue //no listener registered
 		}
 		log.Println("dispatching evt: ", evtName)
 		for _, l := range b.listener[evtName] {
