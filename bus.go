@@ -16,9 +16,25 @@ func Bus() bus {
 	}
 }
 
+func (b *bus) Close() {
+	for _, v := range b.events {
+		close(v)
+	}
+
+	for _, v := range b.listener {
+		log.Println("Closing ", v)
+		for _, l := range v {
+			close(l)
+		}
+	}
+
+}
 func (b *bus) dispatcher(evtName string, c chan interface{}) {
 	for {
-		evt := <-c
+		evt, more := <-c
+		if !more {
+			return
+		}
 		//dispatch:
 		if _, ok := b.listener[evtName]; !ok {
 			log.Println("no listener for event: " + evtName)
@@ -34,7 +50,8 @@ func (b *bus) dispatcher(evtName string, c chan interface{}) {
 			}
 		}
 		log.Println("clearing listeners for ", evtName)
-		b.listener[evtName] = make([]chan interface{}, 5)
+		//TODO: do i need to close them or what?
+		b.listener[evtName] = make([]chan interface{}, 0) //srly 0?
 	}
 }
 
@@ -51,7 +68,7 @@ func (b *bus) To(evtName string) chan interface{} {
 func (b *bus) From(evtName string) chan interface{} {
 	c := make(chan interface{})
 	if _, ok := b.listener[evtName]; !ok {
-		b.listener[evtName] = make([]chan interface{}, 5)
+		b.listener[evtName] = make([]chan interface{}, 0) //srly 0?
 	}
 
 	log.Println("Registered listener to evt: ", evtName)
