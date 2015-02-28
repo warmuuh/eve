@@ -23,7 +23,8 @@ func main() {
 	}()
 
 	b.To("start") <- "test"
-
-	time.Sleep(2 * time.Second)
+	
+	//so goroutine will not be killed... 
+	time.Sleep(1 * time.Second)
 }
 ```
