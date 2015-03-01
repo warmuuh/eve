@@ -70,7 +70,7 @@ func (b *bus) dispatcher(evtName string, c chan interface{}) {
 }
 
 //returns a channel to send an event to
-func (b *bus) To(evtName string) chan interface{} {
+func (b *bus) To(evtName string) chan<- interface{} {
 	b.eventsLock.Lock()
 	defer b.eventsLock.Unlock()
 
@@ -84,7 +84,7 @@ func (b *bus) To(evtName string) chan interface{} {
 }
 
 //returns a channel to receive events from
-func (b *bus) From(evtName string) chan interface{} {
+func (b *bus) From(evtName string) <-chan interface{} {
 	b.eventsLock.Lock()
 	defer b.eventsLock.Unlock()
 
