@@ -19,8 +19,9 @@ func main() {
 	b.To("start") <- "test"
 
 	go func() {
+		c := b.From("start")
 		for {
-			evt := <-b.From("start")
+			evt := <- c
 			log.Println("1Event received: ", evt)
 		}
 	}()

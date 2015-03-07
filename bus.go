@@ -42,8 +42,6 @@ func (b *bus) Close() {
 
 func (b *bus) dispatcher(evtName string, c chan interface{}) {
 
-	//TODO: mutex has to be added somewhere here because we iterate over listeners and change them
-
 	for {
 		evt, more := <-c
 		if !more {
@@ -57,15 +55,9 @@ func (b *bus) dispatcher(evtName string, c chan interface{}) {
 		b.trace("dispatching evt: ", evtName)
 		for _, l := range b.listener[evtName] {
 			//send unblocking:
-			select {
-			case l <- evt:
-				//b.trace("Event dispatched")
-			default: //did not send message
-			}
+			go func() { l <- evt }()
 		}
-		b.trace("clearing listeners for ", evtName)
-		//TODO: do i need to close them or what?
-		b.listener[evtName] = make([]chan interface{}, 0) //srly 0?
+
 	}
 }
 
